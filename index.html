@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8"><title>Amelhens</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#2f6b3a"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f6f4ee;--sf:#fff;--tx:#1f2a1f;--mu:#6b7566;--ac:#2f6b3a;--ac2:#e6efe3;--bd:#d9d6cb;--rd:#b3402a}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#141a14;--sf:#1e261e;--tx:#e8ede6;--mu:#9aa595;--ac:#7fc28a;--ac2:#27352a;--bd:#34402f;--rd:#e08a76}}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding-bottom:140px}
+header{padding:14px 16px 4px}h1{margin:0;font-size:22px}small,.mu{color:var(--mu);font-size:13px}
+main{padding:8px 14px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px;margin:10px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{flex:1}
+button,.btn{font:inherit;min-height:48px;padding:0 16px;border-radius:12px;border:1px solid var(--bd);background:var(--sf);color:var(--tx)}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.d{color:var(--rd)}
+input,select,textarea{font:inherit;width:100%;min-height:48px;padding:8px 10px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);margin:4px 0 10px}
+label{font-size:13px;color:var(--mu)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--sf);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;border:0;border-radius:0;background:none;min-height:58px;font-size:12px}nav button.on{color:var(--ac);font-weight:700;background:var(--ac2)}
+#fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));min-height:56px;border-radius:28px;box-shadow:0 3px 10px #0004;font-weight:700}
+#sheet{position:fixed;inset:0;background:#0007;display:none;align-items:flex-end;z-index:9}
+#sheet.on{display:flex}#sheet>div{background:var(--bg);width:100%;max-height:92%;overflow:auto;border-radius:18px 18px 0 0;padding:16px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:10px;background:var(--ac2);color:var(--ac)}
+.tag.r{background:#b3402a22;color:var(--rd)}img.ph{max-width:100%;border-radius:10px;margin:6px 0}
+svg{width:100%;background:var(--ac2);border-radius:14px;touch-action:manipulation}
+</style></head><body>
+<header><h1>🌳 Amelhens</h1><small id="st">Observatoire de terrain · Les Salles-du-Gardon</small></header>
+<main id="m"></main>
+<button id="fab" class="p" onclick="obsForm()">＋ Observation</button>
+<nav id="nv"></nav><div id="sheet" onclick="if(event.target===this)closeS()"><div id="sc"></div></div>
+<script>
+const REF={lat:44.181224,lng:4.031918};
+const ZONES=["Plein sud chaud","Sec / faible réserve","Argileux humide l’hiver","Humidité durable","Abrité du vent","Exposé au vent","Risque de gel","Cuvette / poche froide","Ombre partielle","Protégé par végétation","Non définie"];
+const OTYPES=["Observation","Mesure","Arrosage","Taille / entretien","Sanitaire","Floraison / fruits","Gel / canicule","Mortalité"];
+const STAT=["À documenter","Documenté","Estimé","Hypothèse","Observation personnelle"];
+const QU="pyrenaica,alba,dentata,ithaburensis subsp. macrolepis,coccifera,stellata,libani,muehlenbergii,canariensis,calliprinos,fusiformis,arizonica,frainetto,acutissima,trojana,cerris,pubescens,faginea,canbyi,glaucoides,airensis,buckleyi,franchetii,aucheri,salicina,shumardii,macrocarpa,prinoides,suber,agrifolia,douglasii,brantii".split(",");
+const OT=[["Ficus carica","Moraceae"],["Ceratonia siliqua","Fabaceae"],["Pistacia spp.","Anacardiaceae"],["Sapindus mukorossi","Sapindaceae"],["Opuntia spp.","Cactaceae"],["Argania spinosa","Sapotaceae"],["Brachychiton populneus","Malvaceae"],["Quillaja saponaria","Quillajaceae"],["Maytenus boaria","Celastraceae"],["Chilopsis linearis","Bignoniaceae"],["Peumus boldus","Monimiaceae"],["Aesculus californica","Sapindaceae"]];
+let S,tab="map",$=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fd=t=>new Date(t).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"});
+function mkCode(sci){const p=sci.split(" ");let c=(p[0][0]+(p[1]||"xx").slice(0,2)).toUpperCase(),b=c,n=1;while(S.species.some(s=>s.code===c))c=b+(n++);return c}
+function seed(){S={species:[],plants:[],obs:[]};QU.forEach(e=>addSp("Quercus "+e,"Fagaceae"));OT.forEach(o=>addSp(o[0],o[1]))}
+function addSp(sci,fam){S.species.push({id:uid(),sci,code:mkCode(sci),fam,fr:"",status:"À documenter",source:"",drought:"",frost:"",invasive:false,notes:"",coll:sci.startsWith("Quercus")?"Quercus":"Autres"})}
+/* storage */
+const idb=()=>new Promise((r,j)=>{const q=indexedDB.open("amelhens",1);q.onupgradeneeded=()=>q.result.createObjectStore("k");q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)});
+async function load(){try{const d=await idb();return await new Promise(r=>{const g=d.transaction("k").objectStore("k").get("s");g.onsuccess=()=>r(g.result);g.onerror=()=>r(null)})}catch(e){return null}}
+async function save(){try{const d=await idb();d.transaction("k","readwrite").objectStore("k").put(S,"s")}catch(e){$("#st").textContent="⚠ Stockage indisponible : exportez vos données"}}
+/* helpers */
+const sp=id=>S.species.find(s=>s.id===id)||{};
+const pObs=id=>S.obs.filter(o=>o.plantId===id).sort((a,b)=>b.ts-a.ts);
+const dead=p=>pObs(p.id).some(o=>o.type==="Mortalité");
+function openS(h){$("#sc").innerHTML=h;$("#sheet").classList.add("on")}function closeS(){$("#sheet").classList.remove("on")}
+function setTab(t){tab=t;draw()}
+function gps(la,lo){const b=event.target;b.textContent="Recherche GPS…";navigator.geolocation?navigator.geolocation.getCurrentPosition(p=>{$(la).value=p.coords.latitude.toFixed(6);$(lo).value=p.coords.longitude.toFixed(6);b.textContent="📍 Position enregistrée"},()=>b.textContent="GPS indisponible",{enableHighAccuracy:true,timeout:20000}):b.textContent="GPS indisponible"}
+function photo(inp,key){const f=inp.files[0];if(!f)return;const im=new Image();im.onload=()=>{const k=Math.min(1,720/Math.max(im.width,im.height)),c=document.createElement("canvas");c.width=im.width*k;c.height=im.height*k;c.getContext("2d").drawImage(im,0,0,c.width,c.height);window[key]=c.toDataURL("image/jpeg",.7);inp.nextElementSibling.textContent="✔ Photo prête"};im.src=URL.createObjectURL(f)}
+const phIn=k=>`<label>Photo</label><input type="file" accept="image/*" capture="environment" onchange="photo(this,'${k}')"><div class="mu"></div>`;
+function mic(id){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){alert("Dictée non disponible sur ce navigateur");return}const r=new R();r.lang="fr-FR";r.onresult=e=>{$(id).value+=(" "+e.results[0][0].transcript).trim()+" "};r.start()}
+/* views */
+function draw(){
+$("#nv").innerHTML=[["map","🗺️","Terrain"],["pl","🌱","Végétaux"],["jr","📓","Journal"],["dt","💾","Données"]].map(t=>`<button class="${tab===t[0]?"on":""}" onclick="setTab('${t[0]}')">${t[1]}<br>${t[2]}</button>`).join("");
+$("#m").innerHTML={map:vMap,pl:vPl,jr:vJr,dt:vDt}[tab]();window.scrollTo(0,0)}
+function vMap(){
+const pts=S.plants.filter(p=>p.lat&&p.lng);const k=Math.cos(REF.lat*Math.PI/180);
+let la=[REF.lat],lo=[REF.lng];pts.forEach(p=>{la.push(+p.lat);lo.push(+p.lng)});
+const a=Math.min(...la),b=Math.max(...la),c=Math.min(...lo),d=Math.max(...lo);
+const h=Math.max((b-a),.0004),w=Math.max((d-c)*k,.0004),sc=300/Math.max(h,w);
+const X=g=>30+(g-c)*k*sc,Y=g=>330-(g-a)*sc;
+const dots=pts.map(p=>`<g onclick="plantSheet('${p.id}')"><circle cx="${X(p.lng)}" cy="${Y(p.lat)}" r="11" fill="${dead(p)?"#b3402a":"#2f6b3a"}" stroke="#fff" stroke-width="2"/><text x="${X(p.lng)+14}" y="${Y(p.lat)+4}" font-size="11" fill="currentColor">${esc(p.id.replace("AM-",""))}</text></g>`).join("");
+return `<div class="card"><b>Plan du terrain</b><br><small>Les plants sont placés d’après leur GPS (nord en haut). Fond satellite : non disponible dans cette version. + = point de repérage cadastral E-159.</small>
+<svg viewBox="0 0 360 360"><text x="340" y="22" font-size="14" fill="currentColor">N↑</text><path d="M${X(REF.lng)-8} ${Y(REF.lat)}h16M${X(REF.lng)} ${Y(REF.lat)-8}v16" stroke="currentColor" stroke-width="2"/>${dots}</svg>
+<div class="mu">${pts.length} plant(s) positionné(s) · vert = vivant, rouge = mort</div></div>
+<div class="card row"><div class="sp"><b>${S.plants.length}</b> individus · <b>${S.plants.filter(p=>!dead(p)).length}</b> vivants</div><button class="p" onclick="plantForm()">＋ Planter</button></div>`}
+function vPl(){
+const q=(window.Q||"").toLowerCase();
+const L=S.species.filter(s=>(s.sci+s.fr).toLowerCase().includes(q));
+return `<input placeholder="🔎 Rechercher une espèce…" value="${esc(window.Q||"")}" oninput="window.Q=this.value;draw2()"><div class="row"><button class="p sp" onclick="spForm()">＋ Nouvelle espèce</button></div><div id="ls">${listSp(L)}</div>
+<h3>Individus plantés</h3>${S.plants.map(p=>`<div class="card" onclick="plantSheet('${p.id}')"><b>${esc(p.id)}</b> ${dead(p)?'<span class="tag r">mort</span>':'<span class="tag">vivant</span>'}<br><i>${esc(sp(p.sp).sci)}</i><br><small>${esc(p.zone)} · planté le ${esc(p.date||"?")}</small></div>`).join("")||'<p class="mu">Aucun individu pour l’instant.</p>'}`}
+function listSp(L){return L.map(s=>`<div class="card" onclick="spForm('${s.id}')"><b><i>${esc(s.sci)}</i></b> <span class="tag">${esc(s.code)}</span>${s.invasive?' <span class="tag r">invasive</span>':""}<br><small>${esc(s.fam)} · ${esc(s.status)} · ${S.plants.filter(p=>p.sp===s.id).length} individu(s)</small></div>`).join("")}
+function draw2(){const q=window.Q.toLowerCase();$("#ls").innerHTML=listSp(S.species.filter(s=>(s.sci+s.fr).toLowerCase().includes(q)))}
+function vJr(){const o=[...S.obs].sort((a,b)=>b.ts-a.ts);return o.map(x=>`<div class="card"><span class="tag">${esc(x.type)}</span> <small>${fd(x.ts)}</small><br>${x.plantId?`<b>${esc(x.plantId)}</b> `:""}${esc(x.text)}${x.h?`<br><small>Hauteur ${esc(x.h)} cm</small>`:""}${x.lat?`<br><small>📍 ${x.lat}, ${x.lng}</small>`:""}${x.img?`<br><img class="ph" src="${x.img}">`:""}</div>`).join("")||'<p class="mu">Journal vide. Appuyez sur « + Observation ».</p>'}
+function vDt(){return `<div class="card"><b>Sauvegarde</b><p class="mu">Vos données sont stockées dans ce navigateur, sur ce téléphone. Exportez-les régulièrement : le fichier est téléchargé dans votre dossier Téléchargements.</p>
+<button class="p" onclick="exp('json')">Télécharger tout (JSON)</button> <button onclick="exp('csv')">Télécharger individus (CSV)</button></div>
+<div class="card"><b>Restaurer</b><textarea id="imp" rows="4" placeholder="Collez ici le JSON exporté"></textarea><button onclick="imp()">Importer (fusion sans suppression)</button></div>
+<div class="card"><small>Version 1.0 – Phase 1. Les observations ne sont jamais écrasées : chaque ajout est daté et conservé.</small></div>`}
+async function exp(t){let s;if(t==="json")s=JSON.stringify(S);else{s="id;espece;zone;lat;lng;date_plantation;fournisseur;lot;vivant\n"+S.plants.map(p=>[p.id,sp(p.sp).sci,p.zone,p.lat,p.lng,p.date,p.sup,p.lot,dead(p)?"non":"oui"].map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(";")).join("\n")}
+try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:t==='json'?'application/json':'text/csv'}));a.download='amelhens-'+new Date().toISOString().slice(0,10)+'.'+t;document.body.appendChild(a);a.click();a.remove();await navigator.clipboard.writeText(s).catch(()=>{});alert('Fichier téléchargé (copie aussi dans le presse-papiers)');return}catch(e0){}try{await navigator.clipboard.writeText(s);alert("Copié dans le presse-papiers ("+s.length+" caractères)")}catch(e){openS(`<textarea rows="12" onfocus="this.select()">${esc(s)}</textarea><button onclick="closeS()">Fermer</button>`)}}
+function imp(){try{const d=JSON.parse($("#imp").value);["species","plants","obs"].forEach(k=>(d[k]||[]).forEach(x=>{if(!S[k].some(y=>y.id===x.id))S[k].push(x)}));save();draw();alert("Import terminé")}catch(e){alert("JSON invalide")}}
+/* forms */
+function spForm(id){const s=id?sp(id):{sci:"",fam:"",fr:"",status:"À documenter",source:"",drought:"",frost:"",notes:"",invasive:false};
+const sel=(n,v)=>`<select id="${n}"><option value="">non évalué</option>${[0,1,2,3,4,5].map(i=>`<option ${String(v)===String(i)?"selected":""}>${i}</option>`).join("")}</select>`;
+openS(`<h3>${id?"Fiche espèce":"Nouvelle espèce"}</h3><label>Nom scientifique</label><input id="f1" value="${esc(s.sci)}"><label>Nom français</label><input id="f2" value="${esc(s.fr)}"><label>Famille</label><input id="f3" value="${esc(s.fam)}">
+<label>Résistance à la sécheresse (0-5)</label>${sel("f4",s.drought)}<label>Résistance au gel (0-5)</label>${sel("f5",s.frost)}
+<label>Statut de la donnée</label><select id="f6">${STAT.map(x=>`<option ${x===s.status?"selected":""}>${x}</option>`).join("")}</select><label>Source</label><input id="f7" value="${esc(s.source)}">
+<label>Notes</label><textarea id="f8" rows="3">${esc(s.notes)}</textarea><label><input type="checkbox" id="f9" style="width:auto;min-height:0" ${s.invasive?"checked":""}> Risque invasif avéré (exclure des recommandations)</label>
+<p class="mu">Les notes sont des valeurs saisies par vous : indiquez la source et le statut (documenté, estimé, hypothèse…).</p>
+<div class="row"><button class="p sp" onclick="spSave('${id||""}')">Enregistrer</button>${id?`<button onclick="closeS();plantForm('${id}')">🌱 Planter</button>`:""}<button onclick="closeS()">Annuler</button></div>`)}
+function spSave(id){const v=n=>$("#"+n).value.trim();if(!v("f1")){alert("Nom requis");return}
+let s=id?sp(id):null;if(!s){s={id:uid(),code:mkCode(v("f1")),coll:v("f1").startsWith("Quercus")?"Quercus":"Autres"};S.species.push(s)}
+Object.assign(s,{sci:v("f1"),fr:v("f2"),fam:v("f3"),drought:v("f4"),frost:v("f5"),status:v("f6"),source:v("f7"),notes:v("f8"),invasive:$("#f9").checked});save();closeS();draw()}
+function plantForm(spId){window.PH=null;openS(`<h3>Nouvelle plantation</h3><label>Espèce</label><select id="p1">${S.species.map(s=>`<option value="${s.id}" ${s.id===spId?"selected":""}>${esc(s.sci)}</option>`).join("")}</select>
+<label>Zone expérimentale</label><select id="p2">${ZONES.map(z=>`<option>${z}</option>`).join("")}</select>
+<button onclick="gps('#p3','#p4')">📍 Utiliser ma position</button><div class="row"><div class="sp"><label>Latitude</label><input id="p3" inputmode="decimal"></div><div class="sp"><label>Longitude</label><input id="p4" inputmode="decimal"></div></div>
+<label>Date de plantation</label><input type="date" id="p5" value="${new Date().toISOString().slice(0,10)}"><label>Fournisseur / provenance</label><input id="p6"><label>N° de lot</label><input id="p7">${phIn("PH")}
+<div class="row"><button class="p sp" onclick="plantSave()">Créer l’individu</button><button onclick="closeS()">Annuler</button></div>`)}
+function plantSave(){const s=sp($("#p1").value),n=S.plants.filter(p=>p.sp===s.id).length+1;let id;do{id="AM-"+s.code+"-"+String(n+(id?1:0)).padStart(4,"0")}while(0);let m=n;while(S.plants.some(p=>p.id==="AM-"+s.code+"-"+String(m).padStart(4,"0")))m++;id="AM-"+s.code+"-"+String(m).padStart(4,"0");
+S.plants.push({id,sp:s.id,zone:$("#p2").value,lat:$("#p3").value,lng:$("#p4").value,date:$("#p5").value,sup:$("#p6").value,lot:$("#p7").value,img:window.PH||""});save();closeS();draw()}
+function plantSheet(id){const p=S.plants.find(x=>x.id===id),s=sp(p.sp);openS(`<h3>${esc(p.id)}</h3><p><i>${esc(s.sci)}</i> ${dead(p)?'<span class="tag r">mort</span>':'<span class="tag">vivant</span>'}<br><small>${esc(p.zone)} · planté le ${esc(p.date||"?")}<br>📍 ${esc(p.lat||"?")}, ${esc(p.lng||"?")}<br>Fournisseur : ${esc(p.sup||"—")} · Lot : ${esc(p.lot||"—")}</small></p>${p.img?`<img class="ph" src="${p.img}">`:""}
+<button class="p" onclick="closeS();obsForm('${p.id}')">＋ Observation</button><h4>Historique</h4>${pObs(p.id).map(o=>`<div class="card"><span class="tag">${esc(o.type)}</span> <small>${fd(o.ts)}</small><br>${esc(o.text)}${o.h?` · ${esc(o.h)} cm`:""}${o.img?`<br><img class="ph" src="${o.img}">`:""}</div>`).join("")||'<p class="mu">Aucune observation.</p>'}<button onclick="closeS()">Fermer</button>`)}
+function obsForm(pid){window.PH=null;if(!S.plants.length&&!pid){}openS(`<h3>Nouvelle observation</h3><label>Végétal (facultatif)</label><select id="o1"><option value="">— aucun / général —</option>${S.plants.map(p=>`<option value="${p.id}" ${p.id===pid?"selected":""}>${esc(p.id)} · ${esc(sp(p.sp).sci)}</option>`).join("")}</select>
+<label>Type</label><select id="o2">${OTYPES.map(t=>`<option>${t}</option>`).join("")}</select>${phIn("PH")}<label>Hauteur (cm, facultatif)</label><input id="o3" inputmode="decimal">
+<label>Note</label><textarea id="o4" rows="3"></textarea><div class="row"><button onclick="mic('#o4')">🎤 Dicter</button><button onclick="gps('#o5','#o6')">📍 Position</button></div><input id="o5" type="hidden"><input id="o6" type="hidden">
+<div class="row"><button class="p sp" onclick="obsSave()">Valider</button><button onclick="closeS()">Annuler</button></div>`)}
+function obsSave(){S.obs.push({id:uid(),ts:Date.now(),plantId:$("#o1").value,type:$("#o2").value,h:$("#o3").value,text:$("#o4").value.trim(),lat:$("#o5").value,lng:$("#o6").value,img:window.PH||""});save();closeS();draw()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+(async()=>{S=await load();if(!S){seed();save()}draw()})();
+</script></body></html>

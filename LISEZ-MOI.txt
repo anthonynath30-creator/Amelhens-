@@ -1,0 +1,6 @@
+INSTALLATION (gratuite)
+1. Mettez ce dossier en ligne gratuitement : app.netlify.com/drop (glisser le dossier décompressé) ou GitHub Pages.
+2. Ouvrez l'adresse obtenue dans Chrome sur le téléphone, attendez 5 secondes (mise en cache hors ligne).
+3. Menu ⋮ > "Installer l'application". Elle apparaît comme une vraie appli, plein écran, utilisable sans Internet.
+4. Option APK : pwabuilder.com > coller l'adresse > Android > télécharger l'APK.
+SAUVEGARDE : onglet Données > Télécharger tout (JSON), régulièrement.
